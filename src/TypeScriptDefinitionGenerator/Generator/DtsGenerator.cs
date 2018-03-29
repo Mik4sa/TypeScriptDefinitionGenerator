@@ -17,13 +17,13 @@ namespace TypeScriptDefinitionGenerator
 
         public override string GetDefaultExtension()
         {
-            if (Options.WebEssentials2015)
+            if (Options.IncludeOriginalExtension)
             {
-                return this.originalExt + Constants.FileExtension;
+                return this.originalExt + Options.GeneratedFileExtension;
             }
             else
             {
-                return Constants.FileExtension;
+                return Options.GeneratedFileExtension;
             }
         }
 

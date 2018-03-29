@@ -14,8 +14,9 @@ namespace TypeScriptDefinitionGenerator
         internal const bool _defCamelCaseTypeNames = false;
         internal const bool _defClassInsteadOfInterface = false;
         internal const bool _defGlobalScope = false;
-        internal const bool _defWebEssentials2015 = true;
         internal const string _defModuleName = "Server.Dtos";
+        internal const bool _defIncludeOriginalExtension = true;
+        internal const string _defGeneratedFileExtension = ".d.ts";
 
         [Category("Casing")]
         [DisplayName("Camel case enum values")]
@@ -51,11 +52,15 @@ namespace TypeScriptDefinitionGenerator
 
 
         [Category("Compatibilty")]
-        [DisplayName("Web Esentials 2015 file names")]
-        [Description("Web Essentials 2015 format is <filename>.cs.d.ts instead of <filename>.d.ts")]
-        [DefaultValue(_defWebEssentials2015)]
-        public bool WebEssentials2015 { get; set; } = _defWebEssentials2015;
-    }
+        [DisplayName("Include original extension in filename")]
+        [DefaultValue(_defIncludeOriginalExtension)]
+        public bool IncludeOriginalExtension { get; set; } = _defIncludeOriginalExtension;
+
+        [Category("Compatibilty")]
+        [DisplayName("File extension to append to the generated filename")]
+        [DefaultValue(_defGeneratedFileExtension)]
+        public string GeneratedFileExtension { get; set; } = _defGeneratedFileExtension;
+	}
 
     public class Options
     {
@@ -109,11 +114,19 @@ namespace TypeScriptDefinitionGenerator
             }
         }
 
-        static public bool WebEssentials2015
+        static public bool IncludeOriginalExtension
         {
             get
             {
-                return overrides != null ? overrides.WebEssentials2015 : DtsPackage.Options.WebEssentials2015;
+                return overrides != null ? overrides.IncludeOriginalExtension : DtsPackage.Options.IncludeOriginalExtension;
+            }
+        }
+
+        static public string GeneratedFileExtension
+        {
+            get
+            {
+                return overrides != null ? overrides.GeneratedFileExtension : DtsPackage.Options.GeneratedFileExtension;
             }
         }
 
@@ -192,8 +205,11 @@ namespace TypeScriptDefinitionGenerator
         public bool GlobalScope { get; set; } = OptionsDialogPage._defGlobalScope;
 
         //        [JsonRequired]
-        public bool WebEssentials2015 { get; set; } = OptionsDialogPage._defWebEssentials2015;
+        public bool IncludeOriginalExtension { get; set; } = OptionsDialogPage._defIncludeOriginalExtension;
 
-    }
+        //        [JsonRequired]
+        public string GeneratedFileExtension { get; set; } = OptionsDialogPage._defGeneratedFileExtension;
+
+	}
 
 }

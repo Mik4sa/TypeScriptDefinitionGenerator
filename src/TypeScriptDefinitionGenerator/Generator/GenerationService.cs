@@ -69,13 +69,13 @@ namespace TypeScriptDefinitionGenerator
 
         public static string GenerateFileName(string sourceFile)
         {
-            if (Options.WebEssentials2015)
+            if (Options.IncludeOriginalExtension)
             {
-                return sourceFile + Constants.FileExtension;
+                return sourceFile + Options.GeneratedFileExtension;
             }
             else
             {
-                return Path.ChangeExtension(sourceFile, Constants.FileExtension);
+                return Path.ChangeExtension(sourceFile, Options.GeneratedFileExtension);
             }
         }
 
