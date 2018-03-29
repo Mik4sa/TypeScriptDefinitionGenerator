@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -11,12 +12,29 @@ namespace TypeScriptDefinitionGenerator
     {
         private static readonly Regex _whitespaceTrimmer = new Regex(@"^\s+|\s+$|\s*[\r\n]+\s*", RegexOptions.Compiled);
 
-        public static string WriteTypeScript(IEnumerable<IntellisenseObject> objects)
+        public static string WriteTypeScript(IEnumerable<IntellisenseObject> objects, string fileNameToWrite)
         {
             var sb = new StringBuilder();
 
             foreach (var ns in objects.GroupBy(o => o.Namespace))
             {
+				List<string> references = objects
+					.SelectMany(o => o.References)
+					.Distinct()
+					.Where(r => Path.GetFileName(r) != GenerationService.GenerateFileName(fileNameToWrite))
+					.OrderBy(r => r)
+					.ToList();
+
+				if (references.Count > 0)
+				{
+					foreach (string referencePath in references)
+					{
+						sb.AppendFormat("/// <reference path=\"{0}\" />\r\n", Path.GetFileName(referencePath));
+					}
+
+					sb.AppendLine();
+				}
+
                 if (!Options.GlobalScope)
                 {
                     sb.AppendFormat("declare module {0} {{\r\n", ns.Key);

@@ -275,16 +275,73 @@ namespace TypeScriptDefinitionGenerator
                 var codeEnum = effectiveTypeRef.CodeType as CodeEnum;
                 var isPrimitive = IsPrimitive(effectiveTypeRef);
 
+				try
+				{
+					if ((codeClass != null || codeEnum != null) &&
+					effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
+					{
+						foreach (Project project in rootElement.DTE.Solution.Projects)
+						{
+							if (project.Object is VSLangProj.VSProject vsproject)
+							{
+								foreach (VSLangProj.Reference projectReference in vsproject.References)
+								{
+									if (projectReference.SourceProject != null && projectReference.SourceProject is Project sourceProject)
+									{
+										foreach (ProjectItem projectItem in sourceProject.ProjectItems)
+										{
+											if (projectItem.FileCodeModel == null)
+												continue;
+
+											foreach (CodeElement element in projectItem.FileCodeModel.CodeElements)
+											{
+												if (element.Kind == vsCMElement.vsCMElementNamespace)
+												{
+													CodeNamespace cn = (CodeNamespace)element;
+
+													foreach (CodeElement member in cn.Members)
+													{
+														if (member.Kind == vsCMElement.vsCMElementClass)
+														{
+															CodeClass2 testCodeClass = member as CodeClass2;
+															CodeEnum testCodeEnum = member as CodeEnum;
+
+															if ((testCodeClass != null && testCodeClass.FullName == effectiveTypeRef.AsFullName) ||
+																(testCodeEnum != null && testCodeEnum.FullName == effectiveTypeRef.AsFullName))
+															{
+																codeClass = testCodeClass;
+																codeEnum = testCodeEnum;
+
+																break;
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				catch (Exception) { }
+
                 var result = new IntellisenseType
                 {
                     IsArray = !isDictionary && (isArray || isCollection),
                     IsDictionary = isDictionary,
                     CodeName = effectiveTypeRef.AsString
                 };
-                if (effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationProject)
+                if (effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType &&
+					(effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationProject || effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal))
                 {
-                    result.ClientSideReferenceName = (codeClass != null && HasIntellisense(codeClass.ProjectItem, references) ? (GetNamespace(codeClass) + "." + Utility.CamelCaseClassName(GetClassName(codeClass))) : null) ??
-                                                     (codeEnum != null && HasIntellisense(codeEnum.ProjectItem, references) ? (GetNamespace(codeEnum) + "." + Utility.CamelCaseClassName(codeEnum.Name)) : null);
+					try
+					{
+						result.ClientSideReferenceName = (codeClass != null && HasIntellisense(codeClass.ProjectItem, references) ? (GetNamespace(codeClass) + "." + Utility.CamelCaseClassName(GetClassName(codeClass))) : null) ??
+													 (codeEnum != null && HasIntellisense(codeEnum.ProjectItem, references) ? (GetNamespace(codeEnum) + "." + Utility.CamelCaseClassName(codeEnum.Name)) : null);
+					}
+					catch (Exception) { }
                 }
                 else result.ClientSideReferenceName = null;
 

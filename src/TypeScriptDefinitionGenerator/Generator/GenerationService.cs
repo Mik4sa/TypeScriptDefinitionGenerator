@@ -57,7 +57,7 @@ namespace TypeScriptDefinitionGenerator
                 VSHelpers.WriteOnOutputWindow(string.Format("{0} - Started", sourceItem.Name));
                 var list = IntellisenseParser.ProcessFile(sourceItem);
                 VSHelpers.WriteOnOutputWindow(string.Format("{0} - Completed", sourceItem.Name));
-                return IntellisenseWriter.WriteTypeScript(list);
+                return IntellisenseWriter.WriteTypeScript(list, sourceItem.Name);
             }
             catch (Exception ex)
             {
