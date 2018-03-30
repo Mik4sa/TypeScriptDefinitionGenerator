@@ -45,16 +45,16 @@ namespace TypeScriptDefinitionGenerator
 					foreach (CodeElement member in cn.Members)
 					{
 						if (ShouldProcess(member))
-							ProcessElement(member, list, underProcess);
+							ProcessElement(item, member, list, underProcess);
 					}
 				}
 				else if (ShouldProcess(element))
-					ProcessElement(element, list, underProcess);
+					ProcessElement(item, element, list, underProcess);
 			}
 
 			return new HashSet<IntellisenseObject>(list);
 		}
-		private static void ProcessElement(CodeElement element, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
+		private static void ProcessElement(ProjectItem projectItem, CodeElement element, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
 		{
 			if (element.Kind == vsCMElement.vsCMElementEnum)
 			{
@@ -80,7 +80,7 @@ namespace TypeScriptDefinitionGenerator
 				}
 				catch { /* Silently continue. */ }
 
-				ProcessClass(cc, baseClass, list, underProcess);
+				ProcessClass(projectItem, cc, baseClass, list, underProcess);
 
 				var references = new HashSet<string>();
 				try
@@ -134,19 +134,19 @@ namespace TypeScriptDefinitionGenerator
 				list.Add(data);
 		}
 
-		private static void ProcessClass(CodeClass cc, CodeClass baseClass, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
+		private static void ProcessClass(ProjectItem projectItem, CodeClass cc, CodeClass baseClass, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
 		{
 			string baseNs = null;
 			string baseClassName = null;
 			string ns = GetNamespace(cc);
 			string className = GetClassName(cc);
 			HashSet<string> references = new HashSet<string>();
-			IList<IntellisenseProperty> properties = GetProperties(cc.Members, new HashSet<string>(), references).ToList();
+			IList<IntellisenseProperty> properties = GetProperties(projectItem, cc.Members, new HashSet<string>(), references).ToList();
 
 			foreach (CodeElement member in cc.Members)
 			{
 				if (ShouldProcess(member))
-					ProcessElement(member, list, underProcess);
+					ProcessElement(projectItem, member, list, underProcess);
 			}
 
 			if (baseClass != null)
@@ -168,7 +168,7 @@ namespace TypeScriptDefinitionGenerator
 			list.Add(intellisenseObject);
 		}
 
-		private static IEnumerable<IntellisenseProperty> GetProperties(CodeElements props, HashSet<string> traversedTypes, HashSet<string> references = null)
+		private static IEnumerable<IntellisenseProperty> GetProperties(ProjectItem projectItem, CodeElements props, HashSet<string> traversedTypes, HashSet<string> references = null)
 		{
 			return from p in props.OfType<CodeProperty>()
 				   where !p.Attributes.Cast<CodeAttribute>().Any(HasIgnoreAttribute)
@@ -176,7 +176,7 @@ namespace TypeScriptDefinitionGenerator
 				   select new IntellisenseProperty
 				   {
 					   Name = GetName(p),
-					   Type = GetType(p.Parent, p.Type, traversedTypes, references),
+					   Type = GetType(projectItem, p.Parent, p.Type, traversedTypes, references),
 					   Summary = GetSummary(p)
 				   };
 		}
@@ -252,7 +252,7 @@ namespace TypeScriptDefinitionGenerator
 			return namespaceFromAttr.FirstOrDefault() ?? DefaultModuleName;
 		}
 
-		private static IntellisenseType GetType(CodeClass rootElement, CodeTypeRef codeTypeRef, HashSet<string> traversedTypes, HashSet<string> references)
+		private static IntellisenseType GetType(ProjectItem projectItem, CodeClass rootElement, CodeTypeRef codeTypeRef, HashSet<string> traversedTypes, HashSet<string> references)
 		{
 			var isArray = codeTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefArray;
 			var isCollection = codeTypeRef.AsString.StartsWith("System.Collections", StringComparison.Ordinal);
@@ -276,9 +276,15 @@ namespace TypeScriptDefinitionGenerator
 				var codeEnum = effectiveTypeRef.CodeType as CodeEnum;
 				var isPrimitive = IsPrimitive(effectiveTypeRef);
 
+				// Some definitions may be defined inside of another project
 				if (codeClass != null && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
 				{
-					codeClass = GetExternalType(rootElement.DTE, codeClass.FullName);
+					// Try retrieving the external codeclass by walking all references the current project has
+					if (TryGetExternalType(projectItem, codeClass.FullName, out CodeClass2 externalCodeClass))
+					{
+						// If successful use the new codeclass
+						codeClass = externalCodeClass;
+					}
 				}
 
 				var result = new IntellisenseType
@@ -302,7 +308,7 @@ namespace TypeScriptDefinitionGenerator
 				if (!isPrimitive && codeClass != null && !traversedTypes.Contains(effectiveTypeRef.CodeType.FullName) && !isCollection)
 				{
 					traversedTypes.Add(effectiveTypeRef.CodeType.FullName);
-					result.Shape = GetProperties(effectiveTypeRef.CodeType.Members, traversedTypes, references).ToList();
+					result.Shape = GetProperties(projectItem, effectiveTypeRef.CodeType.Members, traversedTypes, references).ToList();
 					traversedTypes.Remove(effectiveTypeRef.CodeType.FullName);
 				}
 
@@ -315,50 +321,50 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
-		private static CodeClass2 GetExternalType(DTE dte, string fullName)
+		private static bool TryGetExternalType(ProjectItem projectItem, string fullName, out CodeClass2 codeClass)
 		{
+			// Initialize the out parameter with null
+			codeClass = null;
+
 			try
 			{
-				// Iterate all projects in this solution
-				foreach (Project project in dte.Solution.Projects)
+				if (projectItem.ContainingProject != null && projectItem.ContainingProject.Object is VSProject vsproject)
 				{
-					if (project.Object is VSProject vsproject)
+					// Iterate the project references
+					foreach (Reference projectReference in vsproject.References)
 					{
-						// Iterate the project references
-						foreach (Reference projectReference in vsproject.References)
+						// Only continue with projects where we know the source
+						if (projectReference.SourceProject == null)
+							continue;
+
+						// Iterate the projects items
+						foreach (ProjectItem projectReferenceItem in projectReference.SourceProject.ProjectItems)
 						{
-							// Only continue with projects where we know the source
-							if (projectReference.SourceProject == null)
+							// We need to access the code elements
+							if (projectReferenceItem.FileCodeModel == null)
 								continue;
 
-							// Iterate the projects items
-							foreach (ProjectItem projectItem in projectReference.SourceProject.ProjectItems)
+							// Iterate the project items code elements
+							foreach (CodeElement element in projectReferenceItem.FileCodeModel.CodeElements)
 							{
-								// We need to access the code elements
-								if (projectItem.FileCodeModel == null)
+								// Skip if the element is not a namespace
+								if (element.Kind != vsCMElement.vsCMElementNamespace)
 									continue;
 
-								// Iterate the project items code elements
-								foreach (CodeElement element in projectItem.FileCodeModel.CodeElements)
+								if (element is CodeNamespace externalCodeNamespace)
 								{
-									// Skip if the element is not a namespace
-									if (element.Kind != vsCMElement.vsCMElementNamespace)
-										continue;
-
-									if (element is CodeNamespace externalCodeNamespace)
+									// Iterate the namespace members
+									foreach (CodeElement member in externalCodeNamespace.Members)
 									{
-										// Iterate the namespace members
-										foreach (CodeElement member in externalCodeNamespace.Members)
-										{
-											// Skip if the element is not a class
-											if (member.Kind != vsCMElement.vsCMElementClass)
-												continue;
+										// Skip if the element is not a class
+										if (member.Kind != vsCMElement.vsCMElementClass)
+											continue;
 
-											// Return the found class if the fullname of the internal and external classes matches
-											if (member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
-											{
-												return externalCodeClass;
-											}
+										// Return the found class if the fullname of the internal and external classes matches
+										if (member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
+										{
+											codeClass = externalCodeClass;
+											return true;
 										}
 									}
 								}
@@ -369,7 +375,7 @@ namespace TypeScriptDefinitionGenerator
 			}
 			catch (Exception) { }
 
-			return null;
+			return false;
 		}
 
 		private static CodeTypeRef TryToGuessGenericArgument(CodeClass rootElement, CodeTypeRef codeTypeRef)
