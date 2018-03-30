@@ -1,11 +1,11 @@
-﻿using EnvDTE;
-using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Editor;
-using Microsoft.VisualStudio.Utilities;
-using System;
+﻿using System;
 using System.ComponentModel.Composition;
 using System.IO;
 using System.Windows.Threading;
+using EnvDTE;
+using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Utilities;
 
 namespace TypeScriptDefinitionGenerator
 {

@@ -1,12 +1,12 @@
-﻿using EnvDTE;
-using EnvDTE80;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using EnvDTE;
+using EnvDTE80;
 using TypeScriptDefinitionGenerator.Helpers;
 using VSLangProj;
 

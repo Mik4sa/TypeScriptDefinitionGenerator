@@ -1,9 +1,9 @@
-﻿using EnvDTE;
-using Microsoft.VisualStudio.TextTemplating.VSHost;
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using EnvDTE;
+using Microsoft.VisualStudio.TextTemplating.VSHost;
 
 namespace TypeScriptDefinitionGenerator
 {

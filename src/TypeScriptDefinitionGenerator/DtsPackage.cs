@@ -1,10 +1,10 @@
-﻿using Microsoft.VisualStudio;
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.TextTemplating.VSHost;
-using System;
-using System.Runtime.InteropServices;
-using System.Threading;
 using Tasks = System.Threading.Tasks;
 
 namespace TypeScriptDefinitionGenerator

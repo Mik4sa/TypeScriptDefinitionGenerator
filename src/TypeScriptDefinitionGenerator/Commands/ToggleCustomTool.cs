@@ -1,10 +1,10 @@
-﻿using EnvDTE;
-using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-using System;
+﻿using System;
 using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
+using EnvDTE;
+using EnvDTE80;
+using Microsoft.VisualStudio.Shell;
 using Tasks = System.Threading.Tasks;
 
 namespace TypeScriptDefinitionGenerator
