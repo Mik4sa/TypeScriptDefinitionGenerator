@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using TypeScriptDefinitionGenerator.Helpers;
+using VSLangProj;
 
 namespace TypeScriptDefinitionGenerator
 {
@@ -275,57 +276,10 @@ namespace TypeScriptDefinitionGenerator
                 var codeEnum = effectiveTypeRef.CodeType as CodeEnum;
                 var isPrimitive = IsPrimitive(effectiveTypeRef);
 
-				try
+				if (codeClass != null && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
 				{
-					if ((codeClass != null || codeEnum != null) &&
-					effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
-					{
-						foreach (Project project in rootElement.DTE.Solution.Projects)
-						{
-							if (project.Object is VSLangProj.VSProject vsproject)
-							{
-								foreach (VSLangProj.Reference projectReference in vsproject.References)
-								{
-									if (projectReference.SourceProject != null && projectReference.SourceProject is Project sourceProject)
-									{
-										foreach (ProjectItem projectItem in sourceProject.ProjectItems)
-										{
-											if (projectItem.FileCodeModel == null)
-												continue;
-
-											foreach (CodeElement element in projectItem.FileCodeModel.CodeElements)
-											{
-												if (element.Kind == vsCMElement.vsCMElementNamespace)
-												{
-													CodeNamespace cn = (CodeNamespace)element;
-
-													foreach (CodeElement member in cn.Members)
-													{
-														if (member.Kind == vsCMElement.vsCMElementClass)
-														{
-															CodeClass2 testCodeClass = member as CodeClass2;
-															CodeEnum testCodeEnum = member as CodeEnum;
-
-															if ((testCodeClass != null && testCodeClass.FullName == effectiveTypeRef.AsFullName) ||
-																(testCodeEnum != null && testCodeEnum.FullName == effectiveTypeRef.AsFullName))
-															{
-																codeClass = testCodeClass;
-																codeEnum = testCodeEnum;
-
-																break;
-															}
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
+					codeClass = GetExternalType(rootElement.DTE, codeClass.FullName);
 				}
-				catch (Exception) { }
 
                 var result = new IntellisenseType
                 {
@@ -360,6 +314,63 @@ namespace TypeScriptDefinitionGenerator
                 throw new ArgumentException(string.Format("Cannot find definition of {0}", typeName));
             }
         }
+
+		private static CodeClass2 GetExternalType(DTE dte, string fullName)
+		{
+			try
+			{
+				// Iterate all projects in this solution
+				foreach (Project project in dte.Solution.Projects)
+				{
+					if (project.Object is VSProject vsproject)
+					{
+						// Iterate the project references
+						foreach (Reference projectReference in vsproject.References)
+						{
+							// Only continue with projects where we know the source
+							if (projectReference.SourceProject == null)
+								continue;
+
+							// Iterate the projects items
+							foreach (ProjectItem projectItem in projectReference.SourceProject.ProjectItems)
+							{
+								// We need to access the code elements
+								if (projectItem.FileCodeModel == null)
+									continue;
+
+								// Iterate the project items code elements
+								foreach (CodeElement element in projectItem.FileCodeModel.CodeElements)
+								{
+									// Skip if the element is not a namespace
+									if (element.Kind != vsCMElement.vsCMElementNamespace)
+										continue;
+
+									if (element is CodeNamespace externalCodeNamespace)
+									{
+										// Iterate the namespace members
+										foreach (CodeElement member in externalCodeNamespace.Members)
+										{
+											// Skip if the element is not a class
+											if (member.Kind != vsCMElement.vsCMElementClass)
+												continue;
+
+											// Return the found class if the fullname of the internal and external classes matches
+											if (member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
+											{
+												return externalCodeClass;
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			catch (Exception) { }
+
+			return null;
+		}
 
         private static CodeTypeRef TryToGuessGenericArgument(CodeClass rootElement, CodeTypeRef codeTypeRef)
         {
