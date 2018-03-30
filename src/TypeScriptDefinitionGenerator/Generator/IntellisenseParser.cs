@@ -439,13 +439,13 @@ namespace TypeScriptDefinitionGenerator
 
         private static bool HasIntellisense(ProjectItem projectItem, HashSet<string> references)
         {
-            for (short i = 0; i < projectItem.FileCount; i++)
-            {
-                var fileName = GenerationService.GenerateFileName(projectItem.FileNames[i]);
+			if (projectItem.FileCount > 0)
+			{
+				var fileName = GenerationService.GenerateFileName(projectItem.FileNames[0]);
 
-                references.Add(fileName);
-                return true;
-            }
+				references.Add(fileName);
+				return true;
+			}
 
             return false;
         }
