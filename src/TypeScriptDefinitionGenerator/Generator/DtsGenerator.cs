@@ -7,48 +7,48 @@ using System.Text;
 
 namespace TypeScriptDefinitionGenerator
 {
-    [Guid("d1e92907-20ee-4b6f-ba64-142297def4e4")]
-    public sealed class DtsGenerator : BaseCodeGeneratorWithSite
-    {
-        public const string Name = nameof(DtsGenerator);
-        public const string Description = "Automatically generates the .d.ts file based on the C#/VB model class.";
+	[Guid("d1e92907-20ee-4b6f-ba64-142297def4e4")]
+	public sealed class DtsGenerator : BaseCodeGeneratorWithSite
+	{
+		public const string Name = nameof(DtsGenerator);
+		public const string Description = "Automatically generates the .d.ts file based on the C#/VB model class.";
 
-        string originalExt { get; set; }
+		string originalExt { get; set; }
 
-        public override string GetDefaultExtension()
-        {
-            if (Options.IncludeOriginalExtension)
-            {
-                return this.originalExt + Options.GeneratedFileExtension;
-            }
-            else
-            {
-                return Options.GeneratedFileExtension;
-            }
-        }
+		public override string GetDefaultExtension()
+		{
+			if (Options.IncludeOriginalExtension)
+			{
+				return this.originalExt + Options.GeneratedFileExtension;
+			}
+			else
+			{
+				return Options.GeneratedFileExtension;
+			}
+		}
 
-        protected override byte[] GenerateCode(string inputFileName, string inputFileContent)
-        {
-            ProjectItem item = Dte.Solution.FindProjectItem(inputFileName);
-            this.originalExt = Path.GetExtension(inputFileName);
-            if (item != null)
-            {
-                try
-                {
-                    string dts = GenerationService.ConvertToTypeScript(item);
+		protected override byte[] GenerateCode(string inputFileName, string inputFileContent)
+		{
+			ProjectItem item = Dte.Solution.FindProjectItem(inputFileName);
+			this.originalExt = Path.GetExtension(inputFileName);
+			if (item != null)
+			{
+				try
+				{
+					string dts = GenerationService.ConvertToTypeScript(item);
 
-                    Telemetry.TrackOperation("FileGenerated");
+					Telemetry.TrackOperation("FileGenerated");
 
-                    return Encoding.UTF8.GetBytes(dts);
-                }
-                catch (Exception ex)
-                {
-                    Telemetry.TrackOperation("FileGenerated", Microsoft.VisualStudio.Telemetry.TelemetryResult.Failure);
-                    Telemetry.TrackException("FileGenerated", ex);
-                }
-            }
+					return Encoding.UTF8.GetBytes(dts);
+				}
+				catch (Exception ex)
+				{
+					Telemetry.TrackOperation("FileGenerated", Microsoft.VisualStudio.Telemetry.TelemetryResult.Failure);
+					Telemetry.TrackException("FileGenerated", ex);
+				}
+			}
 
-            return new byte[0];
-        }
-    }
+			return new byte[0];
+		}
+	}
 }
