@@ -277,13 +277,14 @@ namespace TypeScriptDefinitionGenerator
 				var isPrimitive = IsPrimitive(effectiveTypeRef);
 
 				// Some definitions may be defined inside of another project
-				if (codeClass != null && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
+				if ((codeClass != null || codeEnum != null) && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
 				{
 					// Try retrieving the external codeclass by walking all references the current project has
-					if (TryGetExternalType(projectItem, codeClass.FullName, out CodeClass2 externalCodeClass))
+					if (TryGetExternalType(projectItem, codeClass != null ? codeClass.FullName : codeEnum.FullName, out CodeClass2 externalCodeClass, out CodeEnum externalCodeEnum))
 					{
-						// If successful use the new codeclass
+						// If successful use the new type
 						codeClass = externalCodeClass;
+						codeEnum = externalCodeEnum;
 					}
 				}
 
@@ -321,10 +322,11 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
-		private static bool TryGetExternalType(ProjectItem projectItem, string fullName, out CodeClass2 codeClass)
+		private static bool TryGetExternalType(ProjectItem projectItem, string fullName, out CodeClass2 codeClass, out CodeEnum codeEnum)
 		{
 			// Initialize the out parameter with null
 			codeClass = null;
+			codeEnum = null;
 
 			try
 			{
@@ -356,14 +358,16 @@ namespace TypeScriptDefinitionGenerator
 									// Iterate the namespace members
 									foreach (CodeElement member in externalCodeNamespace.Members)
 									{
-										// Skip if the element is not a class
-										if (member.Kind != vsCMElement.vsCMElementClass)
-											continue;
-
 										// Return the found class if the fullname of the internal and external classes matches
-										if (member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
+										if (member.Kind == vsCMElement.vsCMElementClass && member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
 										{
 											codeClass = externalCodeClass;
+											return true;
+										}
+										// Return the found enum if the fullname of the internal and external enums matches
+										else if (member.Kind == vsCMElement.vsCMElementEnum && member is CodeEnum externalCodeEnum && externalCodeEnum.FullName == fullName)
+										{
+											codeEnum = externalCodeEnum;
 											return true;
 										}
 									}
