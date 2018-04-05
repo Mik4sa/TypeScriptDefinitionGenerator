@@ -17,6 +17,7 @@ namespace TypeScriptDefinitionGenerator
 		internal const string _defModuleName = "Server.Dtos";
 		internal const bool _defIncludeOriginalExtension = true;
 		internal const string _defGeneratedFileExtension = ".d.ts";
+		internal const bool _defAssumeExternalType = false;
 
 		[Category("Casing")]
 		[DisplayName("Camel case enum values")]
@@ -49,6 +50,12 @@ namespace TypeScriptDefinitionGenerator
 		[Description("Controls whether to generate types in Global scope or wrapped in a module")]
 		[DefaultValue(_defGlobalScope)]
 		public bool GlobalScope { get; set; } = _defGlobalScope;
+
+		[Category("Settings")]
+		[DisplayName("Assume external type")]
+		[Description("Assume that the external types are existing (better performance while saving files, may lead to incorrect generations)")]
+		[DefaultValue(_defAssumeExternalType)]
+		public bool AssumeExternalType { get; set; } = _defAssumeExternalType;
 
 
 		[Category("Compatibilty")]
@@ -111,6 +118,14 @@ namespace TypeScriptDefinitionGenerator
 			get
 			{
 				return overrides != null ? overrides.GlobalScope : DtsPackage.Options.GlobalScope;
+			}
+		}
+
+		static public bool AssumeExternalType
+		{
+			get
+			{
+				return overrides != null ? overrides.AssumeExternalType : DtsPackage.Options.AssumeExternalType;
 			}
 		}
 
@@ -203,6 +218,9 @@ namespace TypeScriptDefinitionGenerator
 
 		//        [JsonRequired]
 		public bool GlobalScope { get; set; } = OptionsDialogPage._defGlobalScope;
+
+		//        [JsonRequired]
+		public bool AssumeExternalType { get; set; } = OptionsDialogPage._defAssumeExternalType;
 
 		//        [JsonRequired]
 		public bool IncludeOriginalExtension { get; set; } = OptionsDialogPage._defIncludeOriginalExtension;

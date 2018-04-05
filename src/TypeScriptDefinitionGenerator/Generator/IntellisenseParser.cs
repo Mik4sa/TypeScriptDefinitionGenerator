@@ -278,7 +278,7 @@ namespace TypeScriptDefinitionGenerator
 				var isPrimitive = IsPrimitive(effectiveTypeRef);
 
 				// Some definitions may be defined inside of another project
-				if ((codeClass != null || codeEnum != null) && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
+				if (Options.AssumeExternalType == false && (codeClass != null || codeEnum != null) && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
 				{
 					// Try retrieving the external codeclass by walking all references the current project has
 					if (TryGetExternalType(projectItem, codeClass != null ? codeClass.FullName : codeEnum.FullName, out CodeClass2 externalCodeClass, out CodeEnum externalCodeEnum))
@@ -297,12 +297,22 @@ namespace TypeScriptDefinitionGenerator
 					CodeName = effectiveTypeRef.AsString
 				};
 				if (effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType &&
-					(effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationProject || effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal))
+					(effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationProject ||
+					(Options.AssumeExternalType == false && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)))
 				{
 					try
 					{
 						result.ClientSideReferenceName = (codeClass != null && HasIntellisense(codeClass.ProjectItem, references) ? (GetNamespace(codeClass) + "." + Utility.CamelCaseClassName(GetClassName(codeClass))) : null) ??
 													 (codeEnum != null && HasIntellisense(codeEnum.ProjectItem, references) ? (GetNamespace(codeEnum) + "." + Utility.CamelCaseClassName(codeEnum.Name)) : null);
+					}
+					catch (Exception) { }
+				}
+				else if (Options.AssumeExternalType && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
+				{
+					try
+					{
+						result.ClientSideReferenceName = (codeClass != null ? (GetNamespace(codeClass) + "." + Utility.CamelCaseClassName(GetClassName(codeClass))) : null) ??
+													 (codeEnum != null ? (GetNamespace(codeEnum) + "." + Utility.CamelCaseClassName(codeEnum.Name)) : null);
 					}
 					catch (Exception) { }
 				}
