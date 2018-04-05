@@ -256,11 +256,12 @@ namespace TypeScriptDefinitionGenerator
 		{
 			var isArray = codeTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefArray;
 			var isCollection = codeTypeRef.AsString.StartsWith("System.Collections", StringComparison.Ordinal);
+			var isNullable = codeTypeRef.AsFullName.StartsWith("System.Nullable", StringComparison.Ordinal);
 			var isDictionary = false;
 
 			var effectiveTypeRef = codeTypeRef;
 			if (isArray && codeTypeRef.ElementType != null) effectiveTypeRef = effectiveTypeRef.ElementType;
-			else if (isCollection) effectiveTypeRef = TryToGuessGenericArgument(rootElement, effectiveTypeRef);
+			else if (isCollection || isNullable) effectiveTypeRef = TryToGuessGenericArgument(rootElement, effectiveTypeRef);
 
 			if (isCollection)
 			{
@@ -292,6 +293,7 @@ namespace TypeScriptDefinitionGenerator
 				{
 					IsArray = !isDictionary && (isArray || isCollection),
 					IsDictionary = isDictionary,
+					IsOptional = isNullable,
 					CodeName = effectiveTypeRef.AsString
 				};
 				if (effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType &&
@@ -395,7 +397,7 @@ namespace TypeScriptDefinitionGenerator
 			//  3) otherwise, guess that it's a type from the same namespace and same project,
 			//     and use the project CodeModel to retrieve it by full name
 			//  4) if CodeModel returns null - well, bad luck, don't have any more guesses
-			var typeNameAsInCode = codeTypeRef2.AsString.Split('<', '>').ElementAtOrDefault(1) ?? "";
+			var typeNameAsInCode = codeTypeRef2.AsString.Split('<', '>').ElementAtOrDefault(1) ?? codeTypeRef2.AsFullName.Split('<', '>').ElementAtOrDefault(1) ?? "";
 			CodeModel projCodeModel;
 
 			try

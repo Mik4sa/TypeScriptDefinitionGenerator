@@ -5,6 +5,8 @@ namespace TypeScriptDefinitionGenerator
 {
 	public class IntellisenseType
 	{
+		private bool _IsOptional;
+
 		/// <summary>
 		/// This is the name of this type as it appears in the source code
 		/// </summary>
@@ -18,7 +20,16 @@ namespace TypeScriptDefinitionGenerator
 
 		public bool IsDictionary { get; set; }
 
-		public bool IsOptional { get { return CodeName.EndsWith("?"); } }
+		public bool IsOptional {
+			get
+			{
+				return this._IsOptional || CodeName.EndsWith("?");
+			}
+			set
+			{
+				this._IsOptional = value;
+			}
+		}
 
 		/// <summary>
 		/// If this type is itself part of a source code file that has a .d.ts definitions file attached,
