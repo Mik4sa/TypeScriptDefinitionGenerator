@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using EnvDTE;
 using TypeScriptDefinitionGenerator.Helpers;
 
 namespace TypeScriptDefinitionGenerator
@@ -12,18 +13,45 @@ namespace TypeScriptDefinitionGenerator
 	{
 		private static readonly Regex _whitespaceTrimmer = new Regex(@"^\s+|\s+$|\s*[\r\n]+\s*", RegexOptions.Compiled);
 
-		public static string WriteTypeScript(IEnumerable<IntellisenseObject> objects, string fileNameToWrite)
+		private static List<string> GetReferences(IEnumerable<IntellisenseObject> objects, ProjectItem sourceItem)
+		{
+			if (Options.KeepReferencesUnchanged)
+			{
+				ProjectItem generatedProjectItem = sourceItem.ProjectItems
+					.Cast<ProjectItem>()
+					.Where(item => GenerationService.GenerateFileName(sourceItem.Name) == item.Name)
+					.FirstOrDefault();
+
+				if (generatedProjectItem != null)
+				{
+					string documentText = VSHelpers.GetDocumentText(generatedProjectItem);
+
+					if (string.IsNullOrWhiteSpace(documentText) == false)
+					{
+						string pattern = "/// <reference path=\"(.*)\" />\r\n";
+						return new Regex(pattern).Matches(documentText)
+							.Cast<Match>()
+							.Select(m => m.Groups[1].Value)
+							.ToList();
+					}
+				}
+			}
+
+			return objects
+					.SelectMany(o => o.References)
+					.Where(r => Path.GetFileName(r) != GenerationService.GenerateFileName(sourceItem.Name))
+					.Distinct()
+					.OrderBy(r => r)
+					.ToList();
+		}
+
+		public static string WriteTypeScript(IEnumerable<IntellisenseObject> objects, ProjectItem sourceItem)
 		{
 			var sb = new StringBuilder();
 
 			foreach (var ns in objects.GroupBy(o => o.Namespace))
 			{
-				List<string> references = objects
-					.SelectMany(o => o.References)
-					.Distinct()
-					.Where(r => Path.GetFileName(r) != GenerationService.GenerateFileName(fileNameToWrite))
-					.OrderBy(r => r)
-					.ToList();
+				List<string> references = GetReferences(objects, sourceItem);
 
 				if (references.Count > 0)
 				{

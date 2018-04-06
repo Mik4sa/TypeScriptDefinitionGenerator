@@ -18,6 +18,7 @@ namespace TypeScriptDefinitionGenerator
 		internal const bool _defIncludeOriginalExtension = true;
 		internal const string _defGeneratedFileExtension = ".d.ts";
 		internal const bool _defAssumeExternalType = false;
+		internal const bool _defKeepReferencesUnchanged = false;
 
 		[Category("Casing")]
 		[DisplayName("Camel case enum values")]
@@ -56,6 +57,12 @@ namespace TypeScriptDefinitionGenerator
 		[Description("Assume that the external types are existing (better performance while saving files, may lead to incorrect generations)")]
 		[DefaultValue(_defAssumeExternalType)]
 		public bool AssumeExternalType { get; set; } = _defAssumeExternalType;
+
+		[Category("Settings")]
+		[DisplayName("Keep references unchanged")]
+		[Description("Won't modify the reference part of an existing typescript definition file")]
+		[DefaultValue(_defKeepReferencesUnchanged)]
+		public bool KeepReferencesUnchanged { get; set; } = _defKeepReferencesUnchanged;
 
 
 		[Category("Compatibilty")]
@@ -126,6 +133,14 @@ namespace TypeScriptDefinitionGenerator
 			get
 			{
 				return overrides != null ? overrides.AssumeExternalType : DtsPackage.Options.AssumeExternalType;
+			}
+		}
+
+		static public bool KeepReferencesUnchanged
+		{
+			get
+			{
+				return overrides != null ? overrides.KeepReferencesUnchanged : DtsPackage.Options.KeepReferencesUnchanged;
 			}
 		}
 
@@ -221,6 +236,9 @@ namespace TypeScriptDefinitionGenerator
 
 		//        [JsonRequired]
 		public bool AssumeExternalType { get; set; } = OptionsDialogPage._defAssumeExternalType;
+
+		//        [JsonRequired]
+		public bool KeepReferencesUnchanged { get; set; } = OptionsDialogPage._defKeepReferencesUnchanged;
 
 		//        [JsonRequired]
 		public bool IncludeOriginalExtension { get; set; } = OptionsDialogPage._defIncludeOriginalExtension;

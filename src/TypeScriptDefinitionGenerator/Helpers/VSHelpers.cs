@@ -106,6 +106,13 @@ namespace TypeScriptDefinitionGenerator
 				Debug.WriteLine("Failed to write on the Output window pane.");
 			}
 		}
+
+		internal static string GetDocumentText(ProjectItem projectItem)
+		{
+			TextDocument textDocument = (TextDocument)projectItem.Document.Object("TextDocument");
+			EditPoint editPoint = textDocument.StartPoint.CreateEditPoint();
+			return editPoint.GetText(textDocument.EndPoint);
+		}
 	}
 
 	public static class ProjectTypes
