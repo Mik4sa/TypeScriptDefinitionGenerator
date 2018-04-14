@@ -109,9 +109,19 @@ namespace TypeScriptDefinitionGenerator
 
 		internal static string GetDocumentText(ProjectItem projectItem)
 		{
-			TextDocument textDocument = (TextDocument)projectItem.Document.Object("TextDocument");
-			EditPoint editPoint = textDocument.StartPoint.CreateEditPoint();
-			return editPoint.GetText(textDocument.EndPoint);
+			string result = null;
+
+			if (projectItem.Document == null && projectItem.IsOpen == false)
+				projectItem.Open();
+
+			if (projectItem.Document != null)
+			{
+				TextDocument textDocument = (TextDocument)projectItem.Document.Object("TextDocument");
+				EditPoint editPoint = textDocument.StartPoint.CreateEditPoint();
+				result = editPoint.GetText(textDocument.EndPoint);
+			}
+
+			return result;
 		}
 	}
 
