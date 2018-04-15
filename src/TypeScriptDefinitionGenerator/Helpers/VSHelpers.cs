@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Newtonsoft.Json;
 
 namespace TypeScriptDefinitionGenerator
 {
@@ -109,16 +111,63 @@ namespace TypeScriptDefinitionGenerator
 
 		internal static string GetDocumentText(ProjectItem projectItem)
 		{
+			// Initialize our result string
 			string result = null;
+			// We might open a window which we want to close afterwards
+			Window window = null;
 
+			// If the document is null and it's not opened yet
 			if (projectItem.Document == null && projectItem.IsOpen == false)
-				projectItem.Open();
+			{
+				// Open the project item to read it's document and keep a reference to the window we just opened
+				window = projectItem.Open();
+			}
 
+			// Now read the document text
 			if (projectItem.Document != null)
 			{
 				TextDocument textDocument = (TextDocument)projectItem.Document.Object("TextDocument");
 				EditPoint editPoint = textDocument.StartPoint.CreateEditPoint();
 				result = editPoint.GetText(textDocument.EndPoint);
+			}
+
+			// Close the window if we opened one
+			if (window != null)
+			{
+				window.Close();
+			}
+
+			return result;
+		}
+
+		internal static DefinitionMapData GetDefinitionMapData(ProjectItem projectItem)
+		{
+			// Initialize our result
+			DefinitionMapData result = null;
+
+			// Try to find our map data for the typescript definition file
+			ProjectItem definitionMapProjectItem = projectItem.ProjectItems
+				.Cast<ProjectItem>()
+				.Where(pi => pi.Name == GenerationService.GenerateFileName(projectItem.Name) + ".map")
+				.FirstOrDefault();
+
+			// Continue if found
+			if (definitionMapProjectItem != null)
+			{
+				// Get the text of our mapping file
+				string documentText = VSHelpers.GetDocumentText(definitionMapProjectItem);
+
+				// Continue if the document has text
+				if (string.IsNullOrWhiteSpace(documentText) == false)
+				{
+					// Try to parse the containing json string
+					// When a SerializationException is getting thrown the document text wasn't valid
+					try
+					{
+						result = JsonConvert.DeserializeObject<DefinitionMapData>(documentText);
+					}
+					catch (JsonSerializationException) { }
+				}
 			}
 
 			return result;

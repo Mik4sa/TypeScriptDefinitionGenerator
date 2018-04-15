@@ -50,6 +50,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
+    <Compile Include="Generator\DefinitionMapData.cs" />
     <Compile Include="Generator\GenerationService.cs" />
     <Compile Include="Generator\DtsGenerator.cs" />
     <Compile Include="DtsPackage.cs" />

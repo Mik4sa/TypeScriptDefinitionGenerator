@@ -24,7 +24,7 @@ namespace TypeScriptDefinitionGenerator
 		//    public const string TypeScript = ".d.ts";
 		//}
 
-		internal static IEnumerable<IntellisenseObject> ProcessFile(ProjectItem item, HashSet<CodeClass> underProcess = null)
+		internal static IEnumerable<IntellisenseObject> ProcessFile(ProjectItem item, DefinitionMapData definitionMapData, HashSet<CodeClass> underProcess = null)
 		{
 			if (item.FileCodeModel == null || item.ContainingProject == null)
 				return null;
@@ -45,16 +45,16 @@ namespace TypeScriptDefinitionGenerator
 					foreach (CodeElement member in cn.Members)
 					{
 						if (ShouldProcess(member))
-							ProcessElement(item, member, list, underProcess);
+							ProcessElement(item, definitionMapData, member, list, underProcess);
 					}
 				}
 				else if (ShouldProcess(element))
-					ProcessElement(item, element, list, underProcess);
+					ProcessElement(item, definitionMapData, element, list, underProcess);
 			}
 
 			return new HashSet<IntellisenseObject>(list);
 		}
-		private static void ProcessElement(ProjectItem projectItem, CodeElement element, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
+		private static void ProcessElement(ProjectItem projectItem, DefinitionMapData definitionMapData, CodeElement element, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
 		{
 			if (element.Kind == vsCMElement.vsCMElementEnum)
 			{
@@ -80,7 +80,7 @@ namespace TypeScriptDefinitionGenerator
 				}
 				catch { /* Silently continue. */ }
 
-				ProcessClass(projectItem, cc, baseClass, list, underProcess);
+				ProcessClass(projectItem, definitionMapData, cc, baseClass, list, underProcess);
 
 				var references = new HashSet<string>();
 				try
@@ -90,7 +90,7 @@ namespace TypeScriptDefinitionGenerator
 					{
 						list.Last().UpdateReferences(references);
 						underProcess.Add(baseClass);
-						list.AddRange(ProcessFile(baseClass.ProjectItem, underProcess));
+						list.AddRange(ProcessFile(baseClass.ProjectItem, definitionMapData, underProcess));
 					}
 				}
 				catch
@@ -134,19 +134,19 @@ namespace TypeScriptDefinitionGenerator
 				list.Add(data);
 		}
 
-		private static void ProcessClass(ProjectItem projectItem, CodeClass cc, CodeClass baseClass, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
+		private static void ProcessClass(ProjectItem projectItem, DefinitionMapData definitionMapData, CodeClass cc, CodeClass baseClass, List<IntellisenseObject> list, HashSet<CodeClass> underProcess)
 		{
 			string baseNs = null;
 			string baseClassName = null;
 			string ns = GetNamespace(cc);
 			string className = GetClassName(cc);
 			HashSet<string> references = new HashSet<string>();
-			IList<IntellisenseProperty> properties = GetProperties(projectItem, cc.Members, new HashSet<string>(), references).ToList();
+			IList<IntellisenseProperty> properties = GetProperties(projectItem, definitionMapData, cc.Members, new HashSet<string>(), references).ToList();
 
 			foreach (CodeElement member in cc.Members)
 			{
 				if (ShouldProcess(member))
-					ProcessElement(projectItem, member, list, underProcess);
+					ProcessElement(projectItem, definitionMapData, member, list, underProcess);
 			}
 
 			if (baseClass != null)
@@ -168,7 +168,7 @@ namespace TypeScriptDefinitionGenerator
 			list.Add(intellisenseObject);
 		}
 
-		private static IEnumerable<IntellisenseProperty> GetProperties(ProjectItem projectItem, CodeElements props, HashSet<string> traversedTypes, HashSet<string> references = null)
+		private static IEnumerable<IntellisenseProperty> GetProperties(ProjectItem projectItem, DefinitionMapData definitionMapData, CodeElements props, HashSet<string> traversedTypes, HashSet<string> references = null)
 		{
 			return from p in props.OfType<CodeProperty>()
 				   where !p.Attributes.Cast<CodeAttribute>().Any(HasIgnoreAttribute)
@@ -176,7 +176,7 @@ namespace TypeScriptDefinitionGenerator
 				   select new IntellisenseProperty
 				   {
 					   Name = GetName(p),
-					   Type = GetType(projectItem, p.Parent, p.Type, traversedTypes, references),
+					   Type = GetType(projectItem, definitionMapData, p.Parent, p.Type, traversedTypes, references),
 					   Summary = GetSummary(p)
 				   };
 		}
@@ -252,7 +252,7 @@ namespace TypeScriptDefinitionGenerator
 			return namespaceFromAttr.FirstOrDefault() ?? DefaultModuleName;
 		}
 
-		private static IntellisenseType GetType(ProjectItem projectItem, CodeClass rootElement, CodeTypeRef codeTypeRef, HashSet<string> traversedTypes, HashSet<string> references)
+		private static IntellisenseType GetType(ProjectItem projectItem, DefinitionMapData definitionMapData, CodeClass rootElement, CodeTypeRef codeTypeRef, HashSet<string> traversedTypes, HashSet<string> references)
 		{
 			var isArray = codeTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefArray;
 			var isCollection = codeTypeRef.AsString.StartsWith("System.Collections", StringComparison.Ordinal);
@@ -281,7 +281,7 @@ namespace TypeScriptDefinitionGenerator
 				if (Options.AssumeExternalType == false && (codeClass != null || codeEnum != null) && effectiveTypeRef.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && effectiveTypeRef.CodeType.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
 				{
 					// Try retrieving the external codeclass by walking all references the current project has
-					if (TryGetExternalType(projectItem, codeClass != null ? codeClass.FullName : codeEnum.FullName, out CodeClass2 externalCodeClass, out CodeEnum externalCodeEnum))
+					if (TryGetExternalType(projectItem, definitionMapData, codeClass != null ? codeClass.FullName : codeEnum.FullName, out CodeClass2 externalCodeClass, out CodeEnum externalCodeEnum))
 					{
 						// If successful use the new type
 						codeClass = externalCodeClass;
@@ -321,7 +321,7 @@ namespace TypeScriptDefinitionGenerator
 				if (!isPrimitive && codeClass != null && !traversedTypes.Contains(effectiveTypeRef.CodeType.FullName) && !isCollection)
 				{
 					traversedTypes.Add(effectiveTypeRef.CodeType.FullName);
-					result.Shape = GetProperties(projectItem, effectiveTypeRef.CodeType.Members, traversedTypes, references).ToList();
+					result.Shape = GetProperties(projectItem, definitionMapData, effectiveTypeRef.CodeType.Members, traversedTypes, references).ToList();
 					traversedTypes.Remove(effectiveTypeRef.CodeType.FullName);
 				}
 
@@ -334,7 +334,7 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
-		private static bool TryGetExternalType(ProjectItem projectItem, string fullName, out CodeClass2 codeClass, out CodeEnum codeEnum)
+		private static bool TryGetExternalTypeFromMetadata(ProjectItem projectItem, DefinitionMapData definitionMapData, string fullName, out CodeClass2 codeClass, out CodeEnum codeEnum)
 		{
 			// Initialize the out parameter with null
 			codeClass = null;
@@ -342,7 +342,89 @@ namespace TypeScriptDefinitionGenerator
 
 			try
 			{
-				if (projectItem.ContainingProject != null && projectItem.ContainingProject.Object is VSProject vsproject)
+				// Only continue if metadata was specified
+				if (definitionMapData != null)
+				{
+					if (projectItem.ContainingProject != null && projectItem.ContainingProject.Object is VSProject vsproject)
+					{
+						// Try to get the metadata for the external type we search for
+						ReferenceMetadata referenceMetadata = definitionMapData.ReferenceMetadata.Where(md => md.TypeName == fullName).FirstOrDefault();
+
+						if (referenceMetadata != null)
+						{
+							// Get the project reference from the info specified in the metadata
+							Reference projectReference = vsproject.References.Cast<Reference>()
+								.Where(r => r.SourceProject != null && r.Name == referenceMetadata.ProjectName).FirstOrDefault();
+
+							// If the reference wasn't found we can remove the metadata from the definition map file since it's no longer valid
+							if (projectReference == null)
+							{
+								definitionMapData.ReferenceMetadata.Remove(referenceMetadata);
+							}
+							else
+							{
+								// Get the project item which holds our type from the info specified in the metadata
+								ProjectItem projectReferenceItem = projectReference.SourceProject.ProjectItems.Cast<ProjectItem>()
+									.Where(pi => pi.FileCodeModel != null && pi.Name == referenceMetadata.ProjectItemName).FirstOrDefault();
+
+								// If the project item wasn't found we can remove the metadata from the definition map file since it's no longer valid
+								if (projectReferenceItem == null)
+								{
+									definitionMapData.ReferenceMetadata.Remove(referenceMetadata);
+								}
+								else
+								{
+									// Iterate the project items code elements
+									foreach (CodeElement element in projectReferenceItem.FileCodeModel.CodeElements)
+									{
+										// Skip if the element is not a namespace
+										if (element.Kind != vsCMElement.vsCMElementNamespace)
+											continue;
+
+										if (element is CodeNamespace externalCodeNamespace)
+										{
+											// Iterate the namespace members
+											foreach (CodeElement member in externalCodeNamespace.Members)
+											{
+												// Return the found class if the fullname of the internal and external classes matches
+												if (member.Kind == vsCMElement.vsCMElementClass && member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
+												{
+													codeClass = externalCodeClass;
+													return true;
+												}
+												// Return the found enum if the fullname of the internal and external enums matches
+												else if (member.Kind == vsCMElement.vsCMElementEnum && member is CodeEnum externalCodeEnum && externalCodeEnum.FullName == fullName)
+												{
+													codeEnum = externalCodeEnum;
+													return true;
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			catch (Exception) { }
+
+			return false;
+		}
+
+		private static bool TryGetExternalType(ProjectItem projectItem, DefinitionMapData definitionMapData, string fullName, out CodeClass2 codeClass, out CodeEnum codeEnum)
+		{
+			// Initialize the out parameter with null
+			codeClass = null;
+			codeEnum = null;
+
+			try
+			{
+				if (TryGetExternalTypeFromMetadata(projectItem, definitionMapData, fullName, out codeClass, out codeEnum))
+				{
+					return true;
+				}
+				else if (projectItem.ContainingProject != null && projectItem.ContainingProject.Object is VSProject vsproject)
 				{
 					// Iterate the project references
 					foreach (Reference projectReference in vsproject.References)
@@ -373,12 +455,28 @@ namespace TypeScriptDefinitionGenerator
 										// Return the found class if the fullname of the internal and external classes matches
 										if (member.Kind == vsCMElement.vsCMElementClass && member is CodeClass2 externalCodeClass && externalCodeClass.FullName == fullName)
 										{
+											// We found our type, add some metadata for future to speed up the whole process
+											definitionMapData.ReferenceMetadata.Add(new ReferenceMetadata()
+											{
+												TypeName = fullName,
+												ProjectName = projectReference.Name,
+												ProjectItemName = projectReferenceItem.Name
+											});
+
 											codeClass = externalCodeClass;
 											return true;
 										}
 										// Return the found enum if the fullname of the internal and external enums matches
 										else if (member.Kind == vsCMElement.vsCMElementEnum && member is CodeEnum externalCodeEnum && externalCodeEnum.FullName == fullName)
 										{
+											// We found our type, add some metadata for future to speed up the whole process
+											definitionMapData.ReferenceMetadata.Add(new ReferenceMetadata()
+											{
+												TypeName = fullName,
+												ProjectName = projectReference.Name,
+												ProjectItemName = projectReferenceItem.Name
+											});
+
 											codeEnum = externalCodeEnum;
 											return true;
 										}
