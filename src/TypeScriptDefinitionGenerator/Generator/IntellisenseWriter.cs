@@ -32,6 +32,7 @@ namespace TypeScriptDefinitionGenerator
 						return new Regex(pattern).Matches(documentText)
 							.Cast<Match>()
 							.Select(m => m.Groups[1].Value)
+							.OrderBy(r => r)
 							.ToList();
 					}
 				}
