@@ -76,7 +76,11 @@ namespace TypeScriptDefinitionGenerator
 
 		public static string GenerateFileName(string sourceFile)
 		{
-			if (Options.IncludeOriginalExtension)
+			if (sourceFile.EndsWith(Options.GeneratedFileExtension))
+			{
+				return sourceFile;
+			}
+			else if (Options.IncludeOriginalExtension)
 			{
 				return sourceFile + Options.GeneratedFileExtension;
 			}

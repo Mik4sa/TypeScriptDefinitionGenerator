@@ -64,7 +64,7 @@ namespace TypeScriptDefinitionGenerator
 
 						if (definitionMapProjectItem != null)
 						{
-							DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(definitionMapProjectItem);
+							DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(definitionMapProjectItem.Collection.Parent as ProjectItem);
 
 							if (definitionMapData != null)
 							{
