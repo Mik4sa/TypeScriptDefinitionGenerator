@@ -150,6 +150,11 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
+		public static string GetCopyDtsFileName(DefinitionMapData definitionMapData, ProjectItem projectItem)
+		{
+			return GenerationService.GenerateFileName((string.IsNullOrWhiteSpace(definitionMapData.CustomName) ? projectItem.Name : definitionMapData.CustomName));
+		}
+
 		public static void CopyDtsFile(DefinitionMapData definitionMapData, ProjectItem projectItem, string dts)
 		{
 			// There might be paths where this file should be copied to
@@ -163,7 +168,7 @@ namespace TypeScriptDefinitionGenerator
 				string filePath = Path.GetFullPath(Path.Combine(
 					Path.GetDirectoryName(projectItem.FileNames[1]),
 					copyPath,
-					string.IsNullOrWhiteSpace(definitionMapData.CustomName) ? GenerationService.GenerateFileName(projectItem.Name) : definitionMapData.CustomName));
+					GenerationService.GetCopyDtsFileName(definitionMapData, projectItem)));
 
 				// Try to write our definition file to the new path too
 				try
