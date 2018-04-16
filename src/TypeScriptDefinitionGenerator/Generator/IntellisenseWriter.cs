@@ -58,7 +58,24 @@ namespace TypeScriptDefinitionGenerator
 				{
 					foreach (string referencePath in references)
 					{
-						sb.AppendFormat("/// <reference path=\"{0}\" />\r\n", Path.GetFileName(referencePath));
+						string path = Path.GetFileName(referencePath);
+
+						ProjectItem definitionMapProjectItem = sourceItem.DTE.Solution.FindProjectItem(referencePath);
+
+						if (definitionMapProjectItem != null)
+						{
+							DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(definitionMapProjectItem);
+
+							if (definitionMapData != null)
+							{
+								if (string.IsNullOrWhiteSpace(definitionMapData.CustomName) == false)
+								{
+									path = GenerationService.GetCopyDtsFileName(definitionMapData, definitionMapProjectItem);
+								}
+							}
+						}
+
+						sb.AppendFormat("/// <reference path=\"{0}\" />\r\n", path);
 					}
 
 					sb.AppendLine();
