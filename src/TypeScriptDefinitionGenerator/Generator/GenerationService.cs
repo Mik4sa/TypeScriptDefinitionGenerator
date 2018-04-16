@@ -126,7 +126,7 @@ namespace TypeScriptDefinitionGenerator
 			string dtsFile = GenerationService.GenerateFileName(sourceFile) + ".map";
 
 			VSHelpers.CheckFileOutOfSourceControl(dtsFile);
-			File.WriteAllText(dtsFile, JsonConvert.SerializeObject(definitionMapData));
+			File.WriteAllText(dtsFile, JsonConvert.SerializeObject(definitionMapData, Formatting.Indented));
 
 			if (sourceItem.ContainingProject.IsKind(ProjectTypes.DOTNET_Core, ProjectTypes.ASPNET_5))
 			{
