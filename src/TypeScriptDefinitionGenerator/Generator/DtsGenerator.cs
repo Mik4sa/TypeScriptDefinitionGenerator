@@ -38,7 +38,7 @@ namespace TypeScriptDefinitionGenerator
 					// Get metadata from our project item
 					DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(item);
 
-					string dts = GenerationService.ConvertToTypeScript(item, definitionMapData);
+					string dts = GenerationService.ConvertToTypeScript(item, ref definitionMapData);
 					Telemetry.TrackOperation("FileGenerated");
 
 					// Copy our dts file to the specified paths in the definition map data

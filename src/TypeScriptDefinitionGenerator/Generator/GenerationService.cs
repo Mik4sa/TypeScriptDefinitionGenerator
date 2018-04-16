@@ -50,7 +50,7 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
-		public static string ConvertToTypeScript(ProjectItem sourceItem, DefinitionMapData definitionMapData)
+		public static string ConvertToTypeScript(ProjectItem sourceItem, ref DefinitionMapData definitionMapData)
 		{
 			try
 			{
@@ -94,7 +94,7 @@ namespace TypeScriptDefinitionGenerator
 			// Get metadata from our project item
 			DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(sourceItem);
 
-			string dts = ConvertToTypeScript(sourceItem, definitionMapData);
+			string dts = ConvertToTypeScript(sourceItem, ref definitionMapData);
 
 			VSHelpers.CheckFileOutOfSourceControl(dtsFile);
 			File.WriteAllText(dtsFile, dts);
