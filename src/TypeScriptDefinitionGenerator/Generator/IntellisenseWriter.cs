@@ -120,6 +120,11 @@ namespace TypeScriptDefinitionGenerator
 						{
 							sb.Append("extends ");
 
+							if (Options.GlobalScope == false)
+							{
+								sb.Append(ns.Key).Append(".");
+							}
+
 							if (!string.IsNullOrEmpty(io.BaseNamespace) && io.BaseNamespace != io.Namespace)
 								sb.Append(io.BaseNamespace).Append(".");
 
