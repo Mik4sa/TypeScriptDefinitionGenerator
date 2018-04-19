@@ -56,7 +56,7 @@ namespace TypeScriptDefinitionGenerator
 
 				if (references.Count > 0)
 				{
-					foreach (string referencePath in references)
+					foreach (string referencePath in references.OrderBy(p => Path.GetFileName(p)))
 					{
 						string path = Path.GetFileName(referencePath);
 
