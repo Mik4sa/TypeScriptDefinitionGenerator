@@ -153,7 +153,24 @@ namespace TypeScriptDefinitionGenerator
 			{
 				baseClassName = GetClassName(baseClass);
 				baseNs = GetNamespace(baseClass);
-				HasIntellisense(baseClass.ProjectItem, references);
+
+				// Some definitions may be defined inside of another project
+				if (baseClass.InfoLocation == vsCMInfoLocation.vsCMInfoLocationExternal)
+				{
+					// Try retrieving the external codeclass by walking all references the current project has
+					if (TryGetExternalType(projectItem, definitionMapData, baseClass.FullName, out CodeClass2 codeClass, out CodeEnum codeEnum))
+					{
+						if (codeClass != null)
+						{
+							HasIntellisense(codeClass.ProjectItem, references);
+						}
+
+						if (codeEnum != null)
+						{
+							HasIntellisense(codeEnum.ProjectItem, references);
+						}
+					}
+				}
 			}
 
 			var intellisenseObject = new IntellisenseObject(properties.ToList(), references)
