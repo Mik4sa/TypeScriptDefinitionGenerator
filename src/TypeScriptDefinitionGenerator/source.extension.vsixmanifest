@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="5cb4e919-c9ff-4026-bd14-fd323a14fac7" Version="2.2.4" Language="en-US" Publisher="Mads Kristensen, Lulus, Kai Leonhardt" />
+        <Identity Id="5cb4e919-c9ff-4026-bd14-fd323a14fac7" Version="2.2.5" Language="en-US" Publisher="Mads Kristensen, Lulus, Kai Leonhardt" />
         <DisplayName>TypeScript Definition Generator</DisplayName>
         <Description xml:space="preserve">Creates and synchronizes TypeScript Definition files (d.ts) from C# model classes to build strongly typed web application where the server- and client-side models are in sync. Works on all .NET project types</Description>
         <MoreInfo>https://github.com/Mik4sa/TypeScriptDefinitionGenerator</MoreInfo>
