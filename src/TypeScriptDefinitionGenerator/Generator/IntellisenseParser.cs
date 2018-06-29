@@ -171,6 +171,10 @@ namespace TypeScriptDefinitionGenerator
 						}
 					}
 				}
+				else
+				{
+					HasIntellisense(baseClass.ProjectItem, references);
+				}
 			}
 
 			var intellisenseObject = new IntellisenseObject(properties.ToList(), references)
