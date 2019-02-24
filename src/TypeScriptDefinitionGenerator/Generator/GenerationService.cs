@@ -50,7 +50,7 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
-		public static string ConvertToTypeScript(ProjectItem sourceItem, ref DefinitionMapData definitionMapData)
+		public static string ConvertToTypeScriptWithoutEnums(ProjectItem sourceItem, ref DefinitionMapData definitionMapData, out bool isEmpty)
 		{
 			try
 			{
@@ -61,13 +61,41 @@ namespace TypeScriptDefinitionGenerator
 				}
 
 				Options.ReadOptionOverrides(sourceItem);
-				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Started", sourceItem.Name));
+				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Started (no enums)", sourceItem.Name));
 				var list = IntellisenseParser.ProcessFile(sourceItem, definitionMapData);
 				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Completed", sourceItem.Name));
-				return IntellisenseWriter.WriteTypeScript(list, sourceItem);
+				return IntellisenseWriter.WriteTypeScriptWithoutEnums(list, sourceItem, out isEmpty);
 			}
 			catch (Exception ex)
 			{
+				isEmpty = true;
+
+				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Failure", sourceItem.Name));
+				Telemetry.TrackException("ParseFailure", ex);
+				return null;
+			}
+		}
+
+		public static string ConvertToTypeScriptEnumsOnly(ProjectItem sourceItem, ref DefinitionMapData definitionMapData, out bool isEmpty)
+		{
+			try
+			{
+				// Initialize the definition data if there was no specified
+				if (definitionMapData == null)
+				{
+					definitionMapData = new DefinitionMapData();
+				}
+
+				Options.ReadOptionOverrides(sourceItem);
+				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Started (enums only)", sourceItem.Name));
+				var list = IntellisenseParser.ProcessFile(sourceItem, definitionMapData);
+				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Completed", sourceItem.Name));
+				return IntellisenseWriter.WriteTypeScriptEnumsOnly(list, sourceItem, out isEmpty);
+			}
+			catch (Exception ex)
+			{
+				isEmpty = true;
+
 				VSHelpers.WriteOnOutputWindow(string.Format("{0} - Failure", sourceItem.Name));
 				Telemetry.TrackException("ParseFailure", ex);
 				return null;
@@ -94,14 +122,21 @@ namespace TypeScriptDefinitionGenerator
 		{
 			string sourceFile = sourceItem.FileNames[1];
 			string dtsFile = GenerationService.GenerateFileName(sourceFile);
+			string dtsEnumFile = GenerationService.GenerateFileName(sourceFile);
 
 			// Get metadata from our project item
 			DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(sourceItem);
 
-			string dts = ConvertToTypeScript(sourceItem, ref definitionMapData);
+			string dts = ConvertToTypeScriptWithoutEnums(sourceItem, ref definitionMapData, out bool isEmpty);
+			string dtsEnumOnly = ConvertToTypeScriptEnumsOnly(sourceItem, ref definitionMapData, out bool isEmptyEnum);
 
 			VSHelpers.CheckFileOutOfSourceControl(dtsFile);
 			File.WriteAllText(dtsFile, dts);
+
+			if (isEmptyEnum == false)
+			{
+				File.WriteAllText(dtsEnumFile, dtsEnumOnly);
+			}
 
 			if (sourceItem.ContainingProject.IsKind(ProjectTypes.DOTNET_Core, ProjectTypes.ASPNET_5))
 			{
@@ -112,12 +147,25 @@ namespace TypeScriptDefinitionGenerator
 					if (dtsItem != null)
 						dtsItem.Properties.Item("DependentUpon").Value = sourceItem.Name;
 
+					if (isEmptyEnum == false)
+					{
+						var dtsItem2 = VSHelpers.GetProjectItem(dtsEnumFile);
+
+						if (dtsItem2 != null)
+							dtsItem2.Properties.Item("DependentUpon").Value = sourceItem.Name;
+					}
+
 					Telemetry.TrackOperation("FileGenerated");
 				}), DispatcherPriority.ApplicationIdle, null);
 			}
 			else if (sourceItem.ContainingProject.IsKind(ProjectTypes.WEBSITE_PROJECT))
 			{
 				sourceItem.ContainingProject.ProjectItems.AddFromFile(dtsFile);
+
+				if (isEmptyEnum == false)
+				{
+					sourceItem.ContainingProject.ProjectItems.AddFromFile(dtsEnumFile);
+				}
 			}
 
 			// Also create the definition map data and add it to our project item
@@ -154,12 +202,56 @@ namespace TypeScriptDefinitionGenerator
 			}
 		}
 
-		public static string GetCopyDtsFileName(DefinitionMapData definitionMapData, ProjectItem projectItem)
+		public static void CreateEnumFile(ProjectItem sourceItem, string content)
 		{
-			return GenerationService.GenerateFileName((string.IsNullOrWhiteSpace(definitionMapData.CustomName) ? projectItem.Name : definitionMapData.CustomName));
+			string sourceFile = sourceItem.FileNames[1];
+			string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(sourceFile);
+
+			while (fileNameWithoutExtension.Contains("."))
+			{
+				fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileNameWithoutExtension);
+			}
+
+			string dtsFile = Path.Combine(Path.GetDirectoryName(sourceFile), fileNameWithoutExtension += "Enum.ts");
+
+			VSHelpers.CheckFileOutOfSourceControl(dtsFile);
+			File.WriteAllText(dtsFile, content);
+
+			if (sourceItem.ContainingProject.IsKind(ProjectTypes.DOTNET_Core, ProjectTypes.ASPNET_5))
+			{
+				Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() =>
+				{
+					var dtsItem = VSHelpers.GetProjectItem(dtsFile);
+
+					if (dtsItem != null)
+						dtsItem.Properties.Item("DependentUpon").Value = sourceItem.Name;
+
+					Telemetry.TrackOperation("FileGenerated");
+				}), DispatcherPriority.ApplicationIdle, null);
+			}
+			else if (sourceItem.ContainingProject.IsKind(ProjectTypes.WEBSITE_PROJECT))
+			{
+				sourceItem.ContainingProject.ProjectItems.AddFromFile(dtsFile);
+			}
+			else
+			{
+				sourceItem.ProjectItems.AddFromFile(dtsFile);
+			}
 		}
 
-		public static void CopyDtsFile(DefinitionMapData definitionMapData, ProjectItem projectItem, string dts)
+		public static string GetCopyDtsFileName(DefinitionMapData definitionMapData, ProjectItem projectItem, bool isEnumDefinition)
+		{
+			string sourceFile = string.IsNullOrWhiteSpace(definitionMapData.CustomName) ? projectItem.Name : definitionMapData.CustomName;
+
+			if (isEnumDefinition)
+			{
+				sourceFile += "Enum";
+			}
+
+			return GenerationService.GenerateFileName(sourceFile);
+		}
+
+		public static void CopyDtsFile(DefinitionMapData definitionMapData, ProjectItem projectItem, string dts, bool isEnumDefinition)
 		{
 			// There might be paths where this file should be copied to
 			foreach (string copyPath in definitionMapData.CopyPaths)
@@ -172,7 +264,7 @@ namespace TypeScriptDefinitionGenerator
 				string filePath = Path.GetFullPath(Path.Combine(
 					Path.GetDirectoryName(projectItem.FileNames[1]),
 					copyPath,
-					GenerationService.GetCopyDtsFileName(definitionMapData, projectItem)));
+					GenerationService.GetCopyDtsFileName(definitionMapData, projectItem, isEnumDefinition)));
 
 				// Try to write our definition file to the new path too
 				try

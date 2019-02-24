@@ -38,11 +38,21 @@ namespace TypeScriptDefinitionGenerator
 					// Get metadata from our project item
 					DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(item);
 
-					string dts = GenerationService.ConvertToTypeScript(item, ref definitionMapData);
+					string dts = GenerationService.ConvertToTypeScriptWithoutEnums(item, ref definitionMapData, out bool isEmpty);
+					string dtsEnum = GenerationService.ConvertToTypeScriptEnumsOnly(item, ref definitionMapData, out bool isEmptyEnum);
 					Telemetry.TrackOperation("FileGenerated");
 
-					// Copy our dts file to the specified paths in the definition map data
-					GenerationService.CopyDtsFile(definitionMapData, item, dts);
+					if (isEmpty == false)
+					{
+						// Copy our dts file to the specified paths in the definition map data
+						GenerationService.CopyDtsFile(definitionMapData, item, dts, false);
+					}
+
+					if (isEmptyEnum == false)
+					{
+						GenerationService.CopyDtsFile(definitionMapData, item, dtsEnum, true);
+						GenerationService.CreateEnumFile(item, dtsEnum);
+					}
 
 					// And in the last step write the map file which contains some metadata
 					GenerationService.CreateDtsMapFile(item, definitionMapData);

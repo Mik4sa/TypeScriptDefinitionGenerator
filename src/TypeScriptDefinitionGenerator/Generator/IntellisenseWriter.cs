@@ -46,8 +46,10 @@ namespace TypeScriptDefinitionGenerator
 					.ToList();
 		}
 
-		public static string WriteTypeScript(IEnumerable<IntellisenseObject> objects, ProjectItem sourceItem)
+		public static string WriteTypeScriptWithoutEnums(IEnumerable<IntellisenseObject> objects, ProjectItem sourceItem, out bool isEmpty)
 		{
+			isEmpty = true;
+
 			var sb = new StringBuilder();
 
 			foreach (var ns in objects.GroupBy(o => o.Namespace))
@@ -70,7 +72,7 @@ namespace TypeScriptDefinitionGenerator
 							{
 								if (string.IsNullOrWhiteSpace(definitionMapData.CustomName) == false)
 								{
-									path = GenerationService.GetCopyDtsFileName(definitionMapData, definitionMapProjectItem);
+									path = GenerationService.GetCopyDtsFileName(definitionMapData, definitionMapProjectItem, false);
 								}
 							}
 						}
@@ -88,52 +90,118 @@ namespace TypeScriptDefinitionGenerator
 
 				foreach (IntellisenseObject io in ns)
 				{
+					if (io.IsEnum)
+					{
+						continue;
+					}
+
+					isEmpty = false;
+
 					if (!string.IsNullOrEmpty(io.Summary))
 						sb.AppendLine("\t/** " + _whitespaceTrimmer.Replace(io.Summary, "") + " */");
 
-					if (io.IsEnum)
+					string type = Options.ClassInsteadOfInterface ? "\tclass " : "\tinterface ";
+					sb.Append(type).Append(Utility.CamelCaseClassName(io.Name)).Append(" ");
+
+					if (!string.IsNullOrEmpty(io.BaseName))
 					{
-						sb.AppendLine("\tconst enum " + Utility.CamelCaseClassName(io.Name) + " {");
+						sb.Append("extends ");
 
-						foreach (var p in io.Properties)
+						if (Options.GlobalScope == false)
 						{
-							WriteTypeScriptComment(p, sb);
+							sb.Append(ns.Key).Append(".");
+						}
 
-							if (p.InitExpression != null)
+						if (!string.IsNullOrEmpty(io.BaseNamespace) && io.BaseNamespace != io.Namespace)
+							sb.Append(io.BaseNamespace).Append(".");
+
+						sb.Append(Utility.CamelCaseClassName(io.BaseName)).Append(" ");
+					}
+
+					WriteTSInterfaceDefinition(sb, "\t", io.Properties);
+					sb.AppendLine();
+				}
+
+				if (!Options.GlobalScope)
+				{
+					sb.AppendLine("}");
+				}
+			}
+
+			return sb.ToString();
+		}
+
+		public static string WriteTypeScriptEnumsOnly(IEnumerable<IntellisenseObject> objects, ProjectItem sourceItem, out bool isEmpty)
+		{
+			isEmpty = true;
+
+			var sb = new StringBuilder();
+
+			foreach (var ns in objects.GroupBy(o => o.Namespace))
+			{
+				List<string> references = GetReferences(objects, sourceItem);
+
+				if (references.Count > 0)
+				{
+					foreach (string referencePath in references.OrderBy(p => Path.GetFileName(p)))
+					{
+						string path = Path.GetFileName(referencePath);
+
+						ProjectItem definitionMapProjectItem = sourceItem.DTE.Solution.FindProjectItem(referencePath);
+
+						if (definitionMapProjectItem != null)
+						{
+							DefinitionMapData definitionMapData = VSHelpers.GetDefinitionMapData(definitionMapProjectItem.Collection.Parent as ProjectItem);
+
+							if (definitionMapData != null)
 							{
-								sb.AppendLine("\t\t" + Utility.CamelCaseEnumValue(p.Name) + " = " + CleanEnumInitValue(p.InitExpression) + ",");
-							}
-							else
-							{
-								sb.AppendLine("\t\t" + Utility.CamelCaseEnumValue(p.Name) + ",");
+								if (string.IsNullOrWhiteSpace(definitionMapData.CustomName) == false)
+								{
+									path = GenerationService.GetCopyDtsFileName(definitionMapData, definitionMapProjectItem, true);
+								}
 							}
 						}
 
-						sb.AppendLine("\t}");
+						sb.AppendFormat("/// <reference path=\"{0}\" />\r\n", path);
 					}
-					else
+
+					sb.AppendLine();
+				}
+
+				if (!Options.GlobalScope)
+				{
+					sb.AppendFormat("declare module {0} {{\r\n", ns.Key);
+				}
+
+				foreach (IntellisenseObject io in ns)
+				{
+					if (io.IsEnum == false)
 					{
-						string type = Options.ClassInsteadOfInterface ? "\tclass " : "\tinterface ";
-						sb.Append(type).Append(Utility.CamelCaseClassName(io.Name)).Append(" ");
-
-						if (!string.IsNullOrEmpty(io.BaseName))
-						{
-							sb.Append("extends ");
-
-							if (Options.GlobalScope == false)
-							{
-								sb.Append(ns.Key).Append(".");
-							}
-
-							if (!string.IsNullOrEmpty(io.BaseNamespace) && io.BaseNamespace != io.Namespace)
-								sb.Append(io.BaseNamespace).Append(".");
-
-							sb.Append(Utility.CamelCaseClassName(io.BaseName)).Append(" ");
-						}
-
-						WriteTSInterfaceDefinition(sb, "\t", io.Properties);
-						sb.AppendLine();
+						continue;
 					}
+
+					isEmpty = false;
+
+					if (!string.IsNullOrEmpty(io.Summary))
+						sb.AppendLine("\t/** " + _whitespaceTrimmer.Replace(io.Summary, "") + " */");
+
+					sb.AppendLine("\tenum " + Utility.CamelCaseClassName(io.Name) + " {");
+
+					foreach (var p in io.Properties)
+					{
+						WriteTypeScriptComment(p, sb);
+
+						if (p.InitExpression != null)
+						{
+							sb.AppendLine("\t\t" + Utility.CamelCaseEnumValue(p.Name) + " = " + CleanEnumInitValue(p.InitExpression) + ",");
+						}
+						else
+						{
+							sb.AppendLine("\t\t" + Utility.CamelCaseEnumValue(p.Name) + ",");
+						}
+					}
+
+					sb.AppendLine("\t}");
 				}
 
 				if (!Options.GlobalScope)
